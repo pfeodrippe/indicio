@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [tla-edn.core :as tla-edn])
   (:import
+   (tlc2 TLC)
    (tlc2.output IMessagePrinterRecorder MP EC)
    (util UniqueString)))
 
@@ -93,21 +94,15 @@
         {:result (if (some-> tlc2.TLCGlobals/mainChecker .theFPSet .size)
                    result
                    :error)
-         :result-info (if (-> info :violation :name (= ::show-example-invariant))
-                        ;; If the user didn't ask for some check (through an
-                        ;; invariant or a temporal property) and there was some
-                        ;; violation (which in reality is just a example of a trace
-                        ;; which satisfies the spec), then we get here.
-                        (-> info
-                            (dissoc :violation)
-                            (assoc :trace-example {}))
-                        info)
-         :distinct-states (some-> tlc2.TLCGlobals/mainChecker .theFPSet .size)
-         :generated-states (some-> tlc2.TLCGlobals/mainChecker .getStatesGenerated)})
-      (catch Exception ex
-        {:result :error
-         :result-info (.getMessage ex)
+         :result-info info
          :distinct-states (some-> tlc2.TLCGlobals/mainChecker .theFPSet .size)
          :generated-states (some-> tlc2.TLCGlobals/mainChecker .getStatesGenerated)})
       (finally
         (MP/unsubscribeRecorder recorder)))))
+
+(defn -main
+  [& args]
+  (tlc-result-handler
+   #(doto (TLC.)
+      (.handleParameters (into-array String args))
+      .process)))
